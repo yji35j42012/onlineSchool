@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        input {
+            /* border: none; */
+            outline: none;
+            padding: 3px 10px;
+        }
+
+        button {
+            border: none;
+            outline: none;
+        }
+
+        .wrap {
+            width: 100%;
+            height: 100%;
+            background: #eee;
+            display: flex;
+            justify-content: center;
+            padding: 100px 0;
+        }
+
+        .todolist_box {
+            position: relative;
+            width: 100%;
+            max-width: 768px;
+            overflow: hidden;
+        }
+
+        .input_box {
+            display: flex;
+            margin-bottom: 15px;
+        }
+
+        .input_txt {
+            background: #ccc;
+            padding: 5px 15px;
+            border: 1px solid #ddd;
+        }
+
+        .inp {
+            flex: 1 1 auto;
+            padding: 0 10px;
+            border: 1px solid #ddd;
+        }
+
+        .btn {
+            padding: 5px 15px;
+            color: #fff;
+            background: #28a745;
+            cursor: pointer;
+        }
+
+        .list_box {
+            border: 1px solid #ddd;
+            height: calc(100% - 80px);
+        }
+
+        .fun_box ul {
+            display: flex;
+            height: 40px;
+        }
+
+        .fun_box li {
+            padding: 10px;
+        }
+
+        .fun_box li.active {
+            background: #fff;
+        }
+
+        .fun_box li:first-child {
+            margin-left: 10px;
+        }
+
+        .info_box {
+            height: 100%;
+            /* padding: 0 10px ; */
+            background: #fff;
+            padding-bottom: 41px;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .info_box li {
+            display: flex;
+            width: 100%;
+        }
+
+        .item {
+            border-bottom: 1px solid #ccc;
+            padding: 10px 20px;
+        }
+        .item_show{
+            width: 100%;
+            display: flex;
+           
+            align-items: center;
+        }
+        .item_edit{
+            display: flex;
+        }
+        .item_edit,
+        .item_edit input{
+            width: 100%;
+        }
+        .item_edit button{
+            min-width: 50px;
+        }
+        .info_txt {
+            display: block;
+            flex: 1 1 auto;
+            height: 30px;
+            line-height: 30px;
+            margin-left: 10px;
+        }
+
+        .del {
+            margin-left: 10px;
+        }
+
+        .bottom_info {
+            position: absolute;
+            display: flex;
+            width: 100%;
+            height: 40px;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0px 20px;
+            bottom: 0;
+            background: #ddd;
+        }
+
+        .del_line {
+            text-decoration: line-through;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap" id="app">
+        <div class="todolist_box">
+            <div class="input_box">
+                <div class="input_txt">代辦事項</div>
+                <input type="text" class="inp" v-model="newTodo" @keyup.enter="addTodo">
+                <button class="btn" @click="addTodo">新增</button>
+            </div>
+            <div class="list_box">
+                <div class="fun_box">
+                    <ul>
+                        <li :class="{'active':visibility == 'all'}" @click="visibility = 'all'">全部</li>
+                        <li :class="{'active':visibility == 'active'}" @click="visibility = 'active'">進行中</li>
+                        <li :class="{'active':visibility == 'completed'}" @click="visibility = 'completed'">已完成</li>
+                    </ul>
+                </div>
+
+                <ul class="info_box">
+                    <li class="item" v-for="(item , key) in fliterTodos">
+                        <div class="item_show" @dblclick="editTodos(item)" v-if="catchTodos.id !== item.id">
+                            <input type="checkbox" :id="item.id" v-model="item.completed">
+                            <span class="info_txt">
+                                <label :for="item.id" :class="{'del_line': item.completed}">
+                                    {{item.title}}
+                                </label>
+                            </span>
+                            <div class="del" @click="removeTodo(item)">X</div>
+                        </div>
+                        <div class="item_edit" v-if="catchTodos.id == item.id">
+                            <input type="text"  
+                                v-model="catchTitle"
+                                @keyup.esc="cancleEdit"
+                                @keyup.enter="doneEdit(item)"
+                            >
+                            <button @click="doneEdit(item)">修改</button>
+                        </div>
+                    </li>
+                </ul>
+
+            </div>
+
+            <div class="bottom_info">
+                <span>有<tt>3</tt>筆任務<tt>未完成</tt></span>
+                <span>清除所有任務</span>
+            </div>
+        </div>
+    </div>
+
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.9/vue.js'></script>
+    <script>
+        let data = {
+            newTodo: "",
+            catchTodos:{},
+            catchTitle:{},
+            editTodo:"",
+            todos: [
+                {
+                    id: '1',
+                    title: '你好',
+                    completed: false,
+                }
+            ],
+            visibility: 'all'
+        }
+        let vm = new Vue({
+            el: "#app",
+            data: data,
+            methods: {
+                addTodo() {
+                    var value = this.newTodo.trim();
+                    var timestamp = Math.floor(Date.now());
+                    // console.log(value , timestamp);
+                    if (!value) return
+                    this.todos.push({
+                        id: timestamp,
+                        title: value,
+                        completed: false
+                    })
+                    this.newTodo = ''
+                },
+                removeTodo(todo) {
+                    // var newIndex = '';
+                    var vm = this;
+                    var newIndex = vm.todos.findIndex((item , key) => {
+                       return todo.id === item.id
+                    })
+                    this.todos.splice(newIndex, 1)
+                },
+                editTodos(item){
+                    this.catchTodos = item
+                    this.catchTitle = item.title
+                },
+                doneEdit(item){
+                    item.title = this.catchTitle
+                    this.catchTodos = {}
+                },
+                cancleEdit(){
+                    this.catchTodos = {}
+                }
+            },
+            computed: {
+                fliterTodos() {
+                    if (this.visibility == 'all') {
+                        return this.todos;
+                    } else if (this.visibility == 'active') {
+                        var newTodos = [];
+                        this.todos.forEach(item => {
+                            if (!item.completed) {
+                                newTodos.push(item)
+                            }
+                        });
+                        return newTodos;
+                    } else if (this.visibility == 'completed') {
+                        var newTodos = [];
+                        this.todos.forEach(item => {
+                            if (item.completed) {
+                                newTodos.push(item)
+                            }
+                        });
+                        return newTodos;
+                    }
+
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
